@@ -76,22 +76,11 @@ begin
 
     dataOutMux : process (opCode) is
     begin
-        -- case opCode is
-        --     when opCode = opCodeGET and unsigned(dataIn) = 0 =>
-        --         dataOut <= aluReg0;
-        --     when opCode = opCodeGET and unsigned(dataIn) = 1 =>
-        --         dataOut <= aluReg1;
-        --     when others =>
-        --         dataOut <= (others => '0');
-        -- end case;
-
         case opCode is
-            when opCodeGET =>
-                if unsigned(dataIn) = 0 then 
-                    dataOut <= aluReg0;
-                elsif unsigned(dataIn) = 1 then
-                    dataOut <= aluReg1;
-                end if;
+            when opCodeGET0 =>
+                dataOut <= aluReg0;
+            when opCodeGET1 =>
+                dataOut <= aluReg1;
             when others =>
                 dataOut <= (others => '0');
         end case;
