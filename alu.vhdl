@@ -12,7 +12,7 @@ entity alu is
         opCode      : in std_logic_vector (opCodeWidth-1 downto 0);
         regSel      : in std_logic_vector (aluRegisterCount-1 downto 0);
         regNullFlag : out std_logic_vector (aluRegisterCount-1 downto 0);
-        dataOut     : out std_logic_vector (dataWidth-1 downto 0)
+        dataOut     : out std_logic_vector (aluRegisterWidth-1 downto 0)
     );
 end alu;
   
