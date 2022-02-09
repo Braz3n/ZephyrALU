@@ -8,28 +8,20 @@ entity alu is
     port (
         rst         : in std_logic; 
         clk         : in std_logic; 
-        regSel      : in std_logic;  -- 0=tmp, 1=acc
-        rw          : in std_logic;  -- 0=write, 1=read
-        flagsOut    : in std_logic;
-        aluEn       : in std_logic;
-        outEn       : in std_logic;
-        opCode      : in std_logic_vector (opCodeWidth-1 downto 0);
+        opCode      : in std_logic_vector (aluOpCodeWidth-1 downto 0);
         dataBus     : inout std_logic_vector (aluRegisterWidth-1 downto 0)
     );
 end alu;
   
 architecture rtl of alu is
-    signal internalDataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
     signal tmpReg           : std_logic_vector (aluRegisterWidth-1 downto 0) := (others => '0');
     signal accReg           : std_logic_vector (aluRegisterWidth-1 downto 0) := (others => '0');
-    signal flgReg           : std_logic_vector (aluRegisterWidth-1 downto 0);
-    signal internalFlgBus   : std_logic_vector (aluRegisterWidth-1 downto 0);
-    signal aluCarrySignal   : std_logic;
+    signal flgReg           : std_logic_vector (aluRegisterWidth-1 downto 0) := (others => '0');
+    signal internalFlgBus   : std_logic_vector (aluRegisterWidth-1 downto 0) := (others => '0');
+    signal aluCarrySignal   : std_logic := '0';
 
-    signal aluTemp : unsigned(aluRegisterWidth downto 0);  -- Intentionally 9-bits wide!
+    signal aluTemp : unsigned(aluRegisterWidth downto 0) := (others => '0');  -- Intentionally 9-bits wide!
 begin
-    dataBus <= internalDataBus when outEn = '1' else (others => 'Z');
-    
     internalFlgBus(zeroFlagIndex) <= '1' when unsigned(accReg) = 0 else '0';
     internalFlgBus(carryFlagINdex) <= '1' when aluCarrySignal = '1' else '0';
     
@@ -40,40 +32,33 @@ begin
             accReg <= (others => '0');
             flgReg <= (others => '0');
         elsif rising_edge(clk) then
-            if aluEn = '1' then
+            if opCode = aluLDA then
+                accReg <= dataBus;
+            elsif opcode = aluLDT then
+                tmpReg <= dataBus;
+            elsif opcode = aluNOP then
+                null; -- Do nothing
+            else
                 accReg <= std_logic_vector(aluTemp(aluRegisterWidth-1 downto 0));
                 flgReg <= internalFlgBus;
-            end if;
-            
-            if rw = '1' then
-                if regSel = '0' then
-                    tmpReg <= dataBus;
-                else
-                    accReg <= dataBus;
-                end if;
-                flgReg <= flgReg;
             end if;
         end if;
     end process;
 
     aluRegReadProcess : process (rw, tmpReg, accReg, flgReg) is
     begin
-        if rw = '0' and outEn = '1' then
-            if flagsOut = '1' then
-                internalDataBus <= flgReg;
-            elsif regSel = '0' then
-                internalDataBus <= tmpReg;
-            elsif regSel = '1' then
-                internalDataBus <= accReg;
-            else
-                internalDataBus <= (others => '0');
-            end if;
+        if opcode = aluRDA then
+            dataBus <= accReg;
+        elsif opcode = aluRDT then
+            dataBus <= tmpReg;
+        elsif opcode = aluRDF then
+            dataBus <= flgReg;
         else
-            internalDataBus <= (others => '0');
+            dataBus <= (others => 'Z');
         end if;
     end process;
 
-    opMux : process (opCode, accReg, tmpReg, aluTemp) is
+    aluOperationMux : process (opCode, accReg, tmpReg, aluTemp) is
     begin
         case opCode is
             when aluINC =>
@@ -89,10 +74,16 @@ begin
                 aluTemp <= ('0' & unsigned(accReg)) - ('0' & unsigned(tmpReg));
                 aluCarrySignal <= aluTemp(aluRegisterWidth);
             when aluAND =>
-                aluTemp <= '0' & ((unsigned(accReg)) and (unsigned(tmpReg)));
+                aluTemp <= '0' & (accReg and tmpReg);
+                aluCarrySignal <= '0';
+            when aluNOT =>
+                aluTemp <= '0' & (not accReg);
+                aluCarrySignal <= '0';
+            when aluXOR =>
+                aluTemp <= '0' & (accReg xor tmpReg);
                 aluCarrySignal <= '0';
             when aluOR =>
-                aluTemp <= '0' & ((unsigned(accReg)) or (unsigned(tmpReg)));
+                aluTemp <= '0' & (accReg or tmpReg);
                 aluCarrySignal <= '0';
             when others =>
                 aluTemp <= (others => '0');
