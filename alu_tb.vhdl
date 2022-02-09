@@ -1,4 +1,4 @@
-use work.constants.all;
+use work.aluConstants.all;
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -12,104 +12,135 @@ architecture behavioural of alu_tb is
     --  Declaration of the component that will be instantiated.
     component alu
     port (
-        rst         : in  std_logic; 
-        clk         : in  std_logic; 
-        dataIn      : in  std_logic_vector (aluRegisterWidth-1 downto 0); 
-        opCode      : in  std_logic_vector (opCodeWidth-1 downto 0);
-        regSel      : in  std_logic_vector (aluRegisterCount-1 downto 0);
-        regNullFlag : out std_logic_vector (aluRegisterCount-1 downto 0);
-        dataOut     : out std_logic_vector (aluRegisterWidth-1 downto 0)
+        rst         : in    std_logic; 
+        clk         : in    std_logic; 
+        regSel      : in    std_logic;  -- 0=tmp, 1=acc
+        rw          : in    std_logic;  -- 0=write, 1=read
+        flagsOut    : in    std_logic;
+        aluEn       : in    std_logic;
+        outEn       : in    std_logic;
+        opCode      : in    std_logic_vector (opCodeWidth-1 downto 0);
+        dataBus     : inout std_logic_vector (aluRegisterWidth-1 downto 0)
     );
     end component;
 
     --  Specifies which entity is bound with the component.
     for alu_UUT: alu use entity work.alu;
 
-    signal rst, clk     : std_logic;
-    signal dataIn       : std_logic_vector (aluRegisterWidth-1 downto 0);
-    signal opCode       : std_logic_vector (opCodeWidth-1 downto 0);
-    signal regSel       : std_logic_vector (aluRegisterCount-1 downto 0);
-    signal regNullFlag  : std_logic_vector (aluRegisterCount-1 downto 0);
-    signal dataOut      : std_logic_vector (aluRegisterWidth-1 downto 0);
+    signal rst      : std_logic; 
+    signal clk      : std_logic; 
+    signal regSel   : std_logic; 
+    signal rw       : std_logic; 
+    signal flagsOut : std_logic; 
+    signal aluEn    : std_logic;
+    signal outEn    : std_logic;
+    signal opCode   : std_logic_vector (opCodeWidth-1 downto 0);
+    signal dataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
 begin
     -- Component instantiation.
     alu_UUT : alu port map 
     (
-        clk => clk,
         rst => rst,
-        dataIn => dataIn,
-        opCode => opCode,
+        clk => clk,
         regSel => regSel,
-        regNullFlag => regNullFlag,
-        dataOut => dataOut
+        rw => rw,
+        flagsOut => flagsOut,
+        aluEn => aluEn,
+        outEn => outEn,
+        opCode => opCode,
+        dataBus => dataBus
     );
 
     -- Clock process.
     process 
     begin 
         clk <= '0';
-        wait for 10 fs;
+        wait for 10 ns;
         clk <= '1';
-        wait for 10 fs;
+        wait for 10 ns;
     end process;
 
     -- Actual working process block.
     process
         type test_pattern_type is record
-            rst         : std_logic;
-            dataIn      : std_logic_vector (aluRegisterWidth-1 downto 0);
-            opCode      : std_logic_vector (opCodeWidth-1 downto 0);
-            regSel      : std_logic_vector (aluRegisterCount-1 downto 0);
-            regNullFlag : std_logic_vector (aluRegisterCount-1 downto 0);
-            dataOut     : std_logic_vector (aluRegisterWidth-1 downto 0);
+            rst      : std_logic; 
+            regSel   : std_logic; 
+            rw       : std_logic; 
+            flagsOut : std_logic; 
+            aluEn    : std_logic;
+            outEn    : std_logic;
+            opCode   : std_logic_vector (opCodeWidth-1 downto 0);
+            dataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
         end record;
         
         type test_pattern_array is array (natural range <>) of test_pattern_type;
         
         constant test_pattern : test_pattern_array :=
         (
-            ('0', "00000101", opCodeSETL, "01", "10", "00000000"),  -- 00 - Load 5 into reg0.
-            ('0', "00000101", opCodeSET,  "10", "00", "00000000"),  -- 01 - Load 5 into reg1.
-            ('0', "00000000", opCodeADD,  "01", "00", "00000000"),  -- 02 - ADD registers into reg0.
-            ('0', "00000000", opCodeGET0, "00", "00", "00001010"),  -- 03 - GET the value in reg0.
-            ('0', "00000000", opCodeGET1, "00", "00", "00000101"),  -- 04 - GET the value in reg1.
+            ('0', '0', '0', '0', '0', '0', aluNOP, "00000101"),  -- 00 - Load 5 into tmp.
+            ('0', '1', '0', '0', '0', '0', aluNOP, "00000101"),  -- 01 - Load 5 into acc.
+            ('0', '0', '1', '0', '1', '0', aluADD, "00000000"),  -- 02 - ADD registers into tmp.
+            ('0', '0', '1', '0', '0', '1', aluNOP, "00000101"),  -- 03 - GET the value in tmp.
+            ('0', '1', '1', '0', '0', '1', aluNOP, "00001010"),  -- 04 - GET the value in acc.
+            ('0', '0', '1', '1', '0', '1', aluNOP, "00000000"),  -- 05 - GET the value in flg.
 
-            ('0', "00000000", opCodeOR,   "01", "00", "00000000"),  -- 05 - OR registers into reg0.
-            ('0', "00000000", opCodeGET0, "00", "00", "00001111"),  -- 06 - GET the value in reg0.
+            ('0', '1', '1', '0', '1', '0', aluOR,  "00000000"),  -- 06 - OR registers into acc.
+            ('0', '1', '1', '0', '0', '1', aluNOP, "00001111"),  -- 07 - GET the value in acc.
 
-            ('0', "00000000", opCodeAND,  "10", "00", "00000000"),  -- 07 - AND registers into reg1.
-            ('0', "00000000", opCodeGET1, "00", "00", "00000101"),  -- 08 - GET the value in reg1.
+            ('0', '1', '1', '0', '1', '0', aluAND, "00000000"),  -- 08 - AND registers into acc.
+            ('0', '1', '1', '0', '0', '1', aluNOP, "00000101"),  -- 09 - GET the value in acc.
 
-            ('0', "11111111", opCodeSET,  "10", "00", "00000000"),  -- 09 - Load 255 into reg1.
-            ('0', "00000000", opCodeINC1, "01", "01", "00000000"),  -- 10 - INC reg1 and store in reg0.
-            ('0', "00000000", opCodeGET0, "00", "01", "00000000"),  -- 11 - GET the value in reg0.
+            ('0', '1', '0', '0', '0', '0', aluNOP, "11111111"),  -- 10 - Load 255 into acc.
+            ('0', '1', '1', '0', '1', '0', aluINC, "00000000"),  -- 11 - INC acc into acc.
+            ('0', '1', '1', '0', '0', '1', aluNOP, "00000000"),  -- 12 - GET the value in acc.
+            ('0', '0', '1', '1', '0', '1', aluNOP, "00000011"),  -- 13 - GET the value in flg.
 
-            ('0', "00000000", opCodeDEC0, "01", "00", "00000000"),  -- 12 - DEC reg0 and store in reg0.
-            ('0', "00000000", opCodeGET0, "00", "00", "11111111"),  -- 13 - GET the value in reg0.
+            ('0', '1', '1', '0', '1', '0', aluDEC, "00000000"),  -- 14 - DEC acc into acc.
+            ('0', '1', '1', '0', '0', '1', aluNOP, "11111111"),  -- 15 - GET the value in acc.
+            ('0', '0', '1', '1', '0', '1', aluNOP, "00000000"),  -- 16 - GET the value in flg.
 
-            ('1', "00000000", opCodeNOP,  "00", "11", "00000000"),  -- 14 - Reset the ALU.
-            ('0', "00000000", opCodeGET0, "00", "11", "00000010"),  -- 15 - GET the value in reg0.
-            ('0', "00000000", opCodeGET1, "00", "11", "00000000")   -- 16 - GET the value in reg1.
+            ('1', '0', '1', '0', '0', '0', aluNOP, "00000000"),  -- 16 - Reset the ALU.
+            ('0', '1', '1', '0', '0', '1', aluNOP, "00000000"),  -- 17 - GET the value in acc.
+            ('0', '0', '1', '0', '0', '1', aluNOP, "00000000"),  -- 18 - GET the value in tmp.
+            ('0', '1', '1', '1', '0', '1', aluNOP, "00000001")   -- 19 - GET the value in flg.
         );
     begin
 
         for i in test_pattern'range loop
             -- Set input signals
             rst <= test_pattern(i).rst;
-            dataIn <= test_pattern(i).dataIn;
-            opCode <= test_pattern(i).opCode;
             regSel <= test_pattern(i).regSel;
-
-            wait for 20 fs;
-
-            assert regNullFlag = test_pattern(i).regNullFlag
-                report "Bad 'null register' value " & to_string(regNullFlag) & 
-                        ", expected " & to_string(test_pattern(i).regNullFlag) &
-                        " at test pattern index " & integer'image(i) severity error;
-            assert dataOut = test_pattern(i).dataOut
-                report "Bad 'data out' value " & to_string(dataOut) & 
-                        ", expected " & to_string(test_pattern(i).dataOut) & 
-                        " at test pattern index " & integer'image(i) severity error;
+            rw <= test_pattern(i).rw;
+            flagsOut <= test_pattern(i).flagsOut;
+            aluEn <= test_pattern(i).aluEn;
+            outEn <= test_pattern(i).outEn;
+            opCode <= test_pattern(i).opCode;
+            if test_pattern(i).outEn = '0' then
+                dataBus <= test_pattern(i).dataBus;
+            else 
+                dataBus <= (others => 'Z'); 
+            end if;
+            
+            wait for 20 ns;
+            
+            if test_pattern(i).rw = '0' then
+                if flagsOut = '1' then
+                    assert dataBus = test_pattern(i).dataBus
+                        report "Bad 'flag register' value " & to_string(dataBus) & 
+                            ", expected " & to_string(test_pattern(i).dataBus) &
+                            " at test pattern index " & integer'image(i) severity error;
+                elsif regSel = '0' then
+                    assert dataBus = test_pattern(i).dataBus
+                        report "Bad 'tmp register' value " & to_string(dataBus) & 
+                            ", expected " & to_string(test_pattern(i).dataBus) &
+                            " at test pattern index " & integer'image(i) severity error;
+                elsif regSel = '1' then
+                    assert dataBus = test_pattern(i).dataBus
+                        report "Bad 'acc register' value " & to_string(dataBus) & 
+                            ", expected " & to_string(test_pattern(i).dataBus) &
+                            " at test pattern index " & integer'image(i) severity error;
+                end if;
+            end if;
         end loop;
 
         assert false report "End Of Test - All Tests Successful!" severity note;
