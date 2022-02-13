@@ -15,7 +15,8 @@ architecture behavioural of alu_tb is
         rst         : in    std_logic; 
         clk         : in    std_logic; 
         opCode      : in    std_logic_vector (aluOpCodeWidth-1 downto 0);
-        dataBus     : inout std_logic_vector (aluRegisterWidth-1 downto 0)
+        dataBus     : inout std_logic_vector (aluRegisterWidth-1 downto 0);
+        flgBus      : out std_logic_vector (aluRegisterWidth-1 downto 0)
     );
     end component;
 
@@ -26,6 +27,7 @@ architecture behavioural of alu_tb is
     signal clk      : std_logic; 
     signal opCode   : std_logic_vector (aluOpCodeWidth-1 downto 0);
     signal dataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
+    signal flgBus   : std_logic_vector (aluRegisterWidth-1 downto 0);
 begin
     -- Component instantiation.
     alu_UUT : alu port map 
@@ -33,7 +35,8 @@ begin
         rst => rst,
         clk => clk,
         opCode => opCode,
-        dataBus => dataBus
+        dataBus => dataBus,
+        flgBus => flgBus
     );
 
     -- Clock process.
@@ -51,38 +54,39 @@ begin
             rst      : std_logic; 
             opCode   : std_logic_vector (aluOpCodeWidth-1 downto 0);
             dataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
+            flgBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
         end record;
         
         type test_pattern_array is array (natural range <>) of test_pattern_type;
         
         constant test_pattern : test_pattern_array :=
         (
-            ('0', aluLDT, "00000101"),  -- 00 - Load 5 into tmp.
-            ('0', aluLDA, "00000101"),  -- 01 - Load 5 into acc.
-            ('0', aluADD, "--------"),  -- 02 - ADD registers into tmp.
-            ('0', aluRDT, "00000101"),  -- 03 - GET the value in tmp.
-            ('0', aluRDA, "00001010"),  -- 04 - GET the value in acc.
-            ('0', aluRDF, "00000000"),  -- 05 - GET the value in flg.
+            ('0', aluLDT, "00000101", x"01"),  -- 00 - Load 5 into tmp.
+            ('0', aluLDA, "00000101", x"00"),  -- 01 - Load 5 into acc.
+            ('0', aluADD, "--------", x"00"),  -- 02 - ADD registers into tmp.
+            ('0', aluRDT, "00000101", x"00"),  -- 03 - GET the value in tmp.
+            ('0', aluRDA, "00001010", x"00"),  -- 04 - GET the value in acc.
+            ('0', aluRDF, "00000000", x"00"),  -- 05 - GET the value in flg.
 
-            ('0', aluOR,  "--------"),  -- 06 - OR registers into acc.
-            ('0', aluRDA, "00001111"),  -- 07 - GET the value in acc.
+            ('0', aluOR,  "--------", x"00"),  -- 06 - OR registers into acc.
+            ('0', aluRDA, "00001111", x"00"),  -- 07 - GET the value in acc.
 
-            ('0', aluAND, "--------"),  -- 08 - AND registers into acc.
-            ('0', aluRDA, "00000101"),  -- 09 - GET the value in acc.
+            ('0', aluAND, "--------", x"00"),  -- 08 - AND registers into acc.
+            ('0', aluRDA, "00000101", x"00"),  -- 09 - GET the value in acc.
 
-            ('0', aluLDA, "11111111"),  -- 10 - Load 255 into acc.
-            ('0', aluINC, "--------"),  -- 11 - INC acc into acc.
-            ('0', aluRDA, "00000000"),  -- 12 - GET the value in acc.
-            ('0', aluRDF, "00000011"),  -- 13 - GET the value in flg.
+            ('0', aluLDA, "11111111", x"00"),  -- 10 - Load 255 into acc.
+            ('0', aluINC, "--------", x"02"),  -- 11 - INC acc into acc.
+            ('0', aluRDA, "00000000", x"02"),  -- 12 - GET the value in acc.
+            ('0', aluRDF, "00000011", x"02"),  -- 13 - GET the value in flg.
 
-            ('0', aluDEC, "--------"),  -- 14 - DEC acc into acc.
-            ('0', aluRDA, "11111111"),  -- 15 - GET the value in acc.
-            ('0', aluRDF, "00000000"),  -- 16 - GET the value in flg.
+            ('0', aluDEC, "--------", x"00"),  -- 14 - DEC acc into acc.
+            ('0', aluRDA, "11111111", x"00"),  -- 15 - GET the value in acc.
+            ('0', aluRDF, "00000000", x"00"),  -- 16 - GET the value in flg01.
 
-            ('1', aluNOP, "--------"),  -- 16 - Reset the ALU.
-            ('0', aluRDA, "00000000"),  -- 17 - GET the value in acc.
-            ('0', aluRDT, "00000000"),  -- 18 - GET the value in tmp.
-            ('0', aluRDF, "00000001")   -- 19 - GET the value in flg.
+            ('1', aluNOP, "--------", x"01"),  -- 16 - Reset the ALU.
+            ('0', aluRDA, "00000000", x"01"),  -- 17 - GET the value in acc.
+            ('0', aluRDT, "00000000", x"01"),  -- 18 - GET the value in tmp.
+            ('0', aluRDF, "00000001", x"01")   -- 19 - GET the value in flg.
         );
     begin
 

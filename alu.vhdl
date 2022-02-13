@@ -9,7 +9,8 @@ entity alu is
         rst         : in std_logic; 
         clk         : in std_logic; 
         opCode      : in std_logic_vector (aluOpCodeWidth-1 downto 0);
-        dataBus     : inout std_logic_vector (aluRegisterWidth-1 downto 0)
+        dataBus     : inout std_logic_vector (aluRegisterWidth-1 downto 0);
+        flgBus      : out std_logic_vector (aluRegisterWidth-1 downto 0)
     );
 end alu;
   
@@ -23,7 +24,8 @@ architecture rtl of alu is
     signal aluTemp : unsigned(aluRegisterWidth downto 0) := (others => '0');  -- Intentionally 9-bits wide!
 begin
     internalFlgBus(zeroFlagIndex) <= '1' when unsigned(accReg) = 0 else '0';
-    internalFlgBus(carryFlagINdex) <= '1' when aluCarrySignal = '1' else '0';
+    internalFlgBus(carryFlagIndex) <= '1' when aluCarrySignal = '1' else '0';
+    flgBus <= flgReg;
     
     aluRegWriteProcess : process (clk, rst) is
     begin
@@ -45,7 +47,7 @@ begin
         end if;
     end process;
 
-    aluRegReadProcess : process (rw, tmpReg, accReg, flgReg) is
+    aluRegReadProcess : process (opCode) is
     begin
         if opcode = aluRDA then
             dataBus <= accReg;
@@ -74,16 +76,16 @@ begin
                 aluTemp <= ('0' & unsigned(accReg)) - ('0' & unsigned(tmpReg));
                 aluCarrySignal <= aluTemp(aluRegisterWidth);
             when aluAND =>
-                aluTemp <= '0' & (accReg and tmpReg);
+                aluTemp <= '0' & unsigned(accReg and tmpReg);
                 aluCarrySignal <= '0';
             when aluNOT =>
-                aluTemp <= '0' & (not accReg);
+                aluTemp <= '0' & unsigned(not accReg);
                 aluCarrySignal <= '0';
             when aluXOR =>
-                aluTemp <= '0' & (accReg xor tmpReg);
+                aluTemp <= '0' & unsigned(accReg xor tmpReg);
                 aluCarrySignal <= '0';
             when aluOR =>
-                aluTemp <= '0' & (accReg or tmpReg);
+                aluTemp <= '0' & unsigned(accReg or tmpReg);
                 aluCarrySignal <= '0';
             when others =>
                 aluTemp <= (others => '0');
