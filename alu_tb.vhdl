@@ -23,11 +23,12 @@ architecture behavioural of alu_tb is
     --  Specifies which entity is bound with the component.
     for alu_UUT: alu use entity work.alu;
 
-    signal rst      : std_logic; 
-    signal clk      : std_logic; 
-    signal opCode   : std_logic_vector (aluOpCodeWidth-1 downto 0);
-    signal dataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
-    signal flgBus   : std_logic_vector (aluRegisterWidth-1 downto 0);
+    signal rst        : std_logic; 
+    signal clk        : std_logic; 
+    signal opCode     : std_logic_vector (aluOpCodeWidth-1 downto 0);
+    signal dataBus    : std_logic_vector (aluRegisterWidth-1 downto 0);
+    signal flgBus     : std_logic_vector (aluRegisterWidth-1 downto 0);
+    signal test_index : integer range 0 to 64;
 begin
     -- Component instantiation.
     alu_UUT : alu port map 
@@ -54,69 +55,100 @@ begin
             rst      : std_logic; 
             opCode   : std_logic_vector (aluOpCodeWidth-1 downto 0);
             dataBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
-            flgBus  : std_logic_vector (aluRegisterWidth-1 downto 0);
+            flgBus   : std_logic_vector (aluRegisterWidth-1 downto 0);
         end record;
         
         type test_pattern_array is array (natural range <>) of test_pattern_type;
         
         constant test_pattern : test_pattern_array :=
         (
-            ('0', aluLDT, "00000101", x"01"),  -- 00 - Load 5 into tmp.
-            ('0', aluLDA, "00000101", x"00"),  -- 01 - Load 5 into acc.
-            ('0', aluADD, "--------", x"00"),  -- 02 - ADD registers into tmp.
-            ('0', aluRDT, "00000101", x"00"),  -- 03 - GET the value in tmp.
-            ('0', aluRDA, "00001010", x"00"),  -- 04 - GET the value in acc.
-            ('0', aluRDF, "00000000", x"00"),  -- 05 - GET the value in flg.
+            ('0', aluLDT,  "00000101", "00000001"),  -- 00 - Load 5 into tmp.
+            ('0', aluLDA,  "00000101", "00000000"),  -- 01 - Load 5 into acc.
+            ('0', aluADD,  "--------", "00000000"),  -- 02 - ADD registers into acc.
+            ('0', aluRDT,  "00000101", "00000000"),  -- 03 - GET the value in tmp.
+            ('0', aluRDA,  "00001010", "00000000"),  -- 04 - GET the value in acc.
 
-            ('0', aluOR,  "--------", x"00"),  -- 06 - OR registers into acc.
-            ('0', aluRDA, "00001111", x"00"),  -- 07 - GET the value in acc.
+            ('0', aluOR,   "--------", "00000000"),  -- 05 - OR registers into acc.
+            ('0', aluRDA,  "00001111", "00000000"),  -- 06 - GET the value in acc.
 
-            ('0', aluAND, "--------", x"00"),  -- 08 - AND registers into acc.
-            ('0', aluRDA, "00000101", x"00"),  -- 09 - GET the value in acc.
+            ('0', aluAND,  "--------", "00000000"),  -- 07 - AND registers into acc.
+            ('0', aluRDA,  "00000101", "00000000"),  -- 08 - GET the value in acc.
 
-            ('0', aluLDA, "11111111", x"00"),  -- 10 - Load 255 into acc.
-            ('0', aluINC, "--------", x"02"),  -- 11 - INC acc into acc.
-            ('0', aluRDA, "00000000", x"02"),  -- 12 - GET the value in acc.
-            ('0', aluRDF, "00000011", x"02"),  -- 13 - GET the value in flg.
+            ('0', aluLDA,  "11111111", "00001000"),  -- 09 - Load 255 into acc.
+            ('0', aluINC,  "--------", "00000011"),  -- 10 - INC acc value.
+            ('0', aluRDA,  "00000000", "00000011"),  -- 11 - GET the value in acc.
 
-            ('0', aluDEC, "--------", x"00"),  -- 14 - DEC acc into acc.
-            ('0', aluRDA, "11111111", x"00"),  -- 15 - GET the value in acc.
-            ('0', aluRDF, "00000000", x"00"),  -- 16 - GET the value in flg01.
+            ('0', aluDEC,  "--------", "00001010"),  -- 12 - DEC acc into acc.
+            ('0', aluRDA,  "11111111", "00001010"),  -- 13 - GET the value in acc.
 
-            ('1', aluNOP, "--------", x"01"),  -- 16 - Reset the ALU.
-            ('0', aluRDA, "00000000", x"01"),  -- 17 - GET the value in acc.
-            ('0', aluRDT, "00000000", x"01"),  -- 18 - GET the value in tmp.
-            ('0', aluRDF, "00000001", x"01")   -- 19 - GET the value in flg.
+            ('0', aluLSL,  "--------", "00001010"),  -- 14 - Logical shift left acc.
+            ('0', aluRDA,  "11111110", "00001010"),  -- 15 - GET the value in acc.
+
+            ('0', aluLSR,  "--------", "00000000"),  -- 16 - Logical shift right acc.
+            ('0', aluRDA,  "01111111", "00000000"),  -- 17 - GET the value in acc.
+
+            ('0', aluASR,  "--------", "00000110"),  -- 18 - Arithmetic shift right acc.
+            ('0', aluRDA,  "00111111", "00000110"),  -- 19 - GET the value in acc.
+
+            ('0', aluRLC,  "--------", "00000000"),  -- 20 - Rotate Left Through Carry acc.
+            ('0', aluRLC,  "--------", "00001100"),  -- 21 - Rotate Left Through Carry acc.
+            ('0', aluASR,  "--------", "00001100"),  -- 22 - Arithmetic shift right acc.
+            ('0', aluRDA,  "11111111", "00001100"),  -- 23 - GET the value in acc.
+
+            ('0', aluLDA,  "10101010", "00001100"),  -- 24 - Load 5 into acc.
+            ('0', aluRLC,  "--------", "00000110"),  -- 25 - Rotate Left Through Carry acc.
+            ('0', aluRDA,  "01010100", "00000110"),  -- 26 - GET the value in acc.
+            ('0', aluRLC,  "--------", "00001100"),  -- 27 - Rotate Left Through Carry acc.
+            ('0', aluRDA,  "10101001", "00001100"),  -- 28 - GET the value in acc.
+
+            ('1', aluNOP,  "--------", "00000000"),  -- 29 - Reset the ALU.
+            ('0', aluRDA,  "00000000", "00000001"),  -- 30 - GET the value in acc.
+            ('0', aluRDT,  "00000000", "00000001"),  -- 31 - GET the value in tmp.
+
+            ('0', aluSETC, "00000000", "00000011"),  -- 32 - Set the Carry flag.
+            ('0', aluSETN, "00000000", "00001011"),  -- 33 - Set the Negative flag.
+            ('0', aluSETV, "00000000", "00001111"),  -- 34 - Set the Overflow flag.
+            ('0', aluCLRC, "00000000", "00001101"),  -- 35 - Clear the Carry flag.
+            ('0', aluCLRN, "00000000", "00000101"),  -- 36 - Clear the Negative flag.
+            ('0', aluCLRV, "00000000", "00000001"),  -- 37 - Clear the Overflow flag. 
+
+            ('0', aluSETC, "00000000", "00000011"),  -- 38 - Set the Carry flag.
+            ('0', aluADC,  "00000000", "00000000"),  -- 39 - Add with carry tmp and acc.
+            ('0', aluRDA,  "00000001", "00000000"),  -- 40 - GET the value in acc.
+            ('0', aluSETC, "00000000", "00000010"),  -- 41 - Set the Carry flag.
+            ('0', aluSBB,  "00000000", "00000001"),   -- 42 - Subtract with borrow tmp and acc.
+            ('0', aluRDA,  "00000000", "00000001")  -- 43 - GET the value in acc.
         );
     begin
 
         for i in test_pattern'range loop
             -- Set input signals
+            test_index <= i;
             rst <= test_pattern(i).rst;
             opCode <= test_pattern(i).opCode;
-            if opcode = aluRDA or opcode = aluRDT or opcode = aluRDF then
-                dataBus <= (others => 'Z'); 
-            else 
+            if test_pattern(i).opCode = aluLDA or test_pattern(i).opCode = aluLDT then
                 dataBus <= test_pattern(i).dataBus;
+            else
+                dataBus <= (others => 'Z'); 
             end if;
             
             wait for 20 ns;
             
-            if opcode = aluRDA then
+            assert flgBus = test_pattern(i).flgBus
+                report "Bad 'Flag register' value " & to_string(flgBus) & 
+                    ", expected " & to_string(test_pattern(i).flgBus) &
+                    " at test pattern index " & integer'image(i) severity error;
+            
+            if test_pattern(i).opCode = aluRDA then
                 assert dataBus = test_pattern(i).dataBus
                     report "Bad 'acc register' value " & to_string(dataBus) & 
                         ", expected " & to_string(test_pattern(i).dataBus) &
                         " at test pattern index " & integer'image(i) severity error;
-            elsif opcode = aluRDT then
+            elsif test_pattern(i).opCode = aluRDT then
                 assert dataBus = test_pattern(i).dataBus
                 report "Bad 'tmp register' value " & to_string(dataBus) & 
                 ", expected " & to_string(test_pattern(i).dataBus) &
                 " at test pattern index " & integer'image(i) severity error;
-            elsif opcode = aluRDF then
-                assert dataBus = test_pattern(i).dataBus
-                    report "Bad 'flag register' value " & to_string(dataBus) & 
-                        ", expected " & to_string(test_pattern(i).dataBus) &
-                        " at test pattern index " & integer'image(i) severity error;
             end if;
         end loop;
 
